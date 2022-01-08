@@ -1,4 +1,5 @@
 (fp_lib_table
   (lib (name "Silkscreen")(type "KiCad")(uri "${KIPRJMOD}/modules/Silkscreen.pretty")(options "")(descr "Silkscreen graphics"))
   (lib (name "RP2040")(type "KiCad")(uri "${KIPRJMOD}/modules/RP2040.pretty")(options "")(descr "RP2040 MCU"))
+  (lib (name "L298P")(type "KiCad")(uri "${KIPRJMOD}/modules/L298P.pretty")(options "")(descr ""))
 )
