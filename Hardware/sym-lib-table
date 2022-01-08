@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "MCU_RaspberryPi")(type "KiCad")(uri "${KIPRJMOD}/library/RP2040/MCU_RaspberryPi.kicad_sym")(options "")(descr "Raspberry Pi MCU"))
+)
