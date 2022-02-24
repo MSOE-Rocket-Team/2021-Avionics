@@ -1,8 +1,7 @@
 (fp_lib_table
   (lib (name "Silkscreen")(type "KiCad")(uri "${KIPRJMOD}/modules/Silkscreen.pretty")(options "")(descr "Silkscreen graphics"))
   (lib (name "RP2040")(type "KiCad")(uri "${KIPRJMOD}/modules/RP2040.pretty")(options "")(descr "RP2040 MCU"))
-  (lib (name "L298P")(type "KiCad")(uri "${KIPRJMOD}/modules/L298P.pretty")(options "")(descr "Motor driver"))
   (lib (name "DX07S016JA1R1500")(type "KiCad")(uri "${KIPRJMOD}/modules/DX07S016JA1R1500.pretty")(options "")(descr "USB Type-C connector"))
   (lib (name "XT60PW-M")(type "KiCad")(uri "${KIPRJMOD}/modules/XT60PW-M.pretty")(options "")(descr "XT60PW-M LiPo connector"))
-  (lib (name "SK6812B")(type "KiCad")(uri "${KIPRJMOD}/library/SK6812B.pretty")(options "")(descr ""))
+  (lib (name "SK6812B")(type "KiCad")(uri "${KIPRJMOD}/modules/SK6812B.pretty")(options "")(descr ""))
 )
