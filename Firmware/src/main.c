@@ -1,5 +1,7 @@
 #include "pico/stdlib.h"
 
+#include "pid.h"
+
 int main() {
   #ifndef PICO_DEFAULT_LED_PIN
     #warning blink example requires a board with a regular LED
@@ -7,6 +9,10 @@ int main() {
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    pid_t* pid;
+    pid_init(pid, 1, 5, 4);
+
     while (true) {
       gpio_put(LED_PIN, 1);
       sleep_ms(250);
