@@ -25,5 +25,8 @@ fp-info-cache
 *.xml
 *.csv
 
+# IntelliJ
+.idea/
+
 # Firmware build artifacts
 Firmware/build/

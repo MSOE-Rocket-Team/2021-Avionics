@@ -11,12 +11,21 @@ pico_sdk_init()
 
 include_directories(include)
 
-file(GLOB SOURCES "src/*.c")
-add_executable(firmware ${SOURCES})
+if (TARGET tinyusb_device)
+  file(GLOB SOURCES "src/*.c")
+  add_executable(firmware ${SOURCES})
 
-# Add pico_stdlib library which aggregates commonly used features
-target_link_libraries(firmware pico_stdlib)
+  # Add pico_stdlib library which aggregates commonly used features
+  target_link_libraries(firmware pico_stdlib)
 
-# Create map/bin/hex/uf2 file in addition to ELF
-pico_add_extra_outputs(firmware)
+  # enable usb output, disable uart output
+  pico_enable_stdio_usb(firmware 1)
+  pico_enable_stdio_uart(firmware 0)
+
+  # Create map/bin/hex/uf2 file in addition to ELF
+  pico_add_extra_outputs(firmware)
+
+elseif(PICO_ON_DEVICE)
+  message(WARNING "not building firmware because TinyUSB submodule is not initialized in the SDK")
+endif()
 

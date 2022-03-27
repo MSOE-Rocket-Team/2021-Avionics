@@ -1,6 +1,7 @@
 #include "pico/stdlib.h"
 
 #include "pid.h"
+#include "pico/printf.h"
 
 int main() {
   #ifndef PICO_DEFAULT_LED_PIN
@@ -10,14 +11,17 @@ int main() {
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
-    pid_t* pid;
+    stdio_init_all();
+
+    pid *pid = NULL;
     pid_init(pid, 1, 5, 4);
 
     while (true) {
       gpio_put(LED_PIN, 1);
-      sleep_ms(250);
+      sleep_ms(1000);
       gpio_put(LED_PIN, 0);
-      sleep_ms(250);
+      printf("Hello, World!\n");
+      sleep_ms(1000);
     }
   #endif
 }
