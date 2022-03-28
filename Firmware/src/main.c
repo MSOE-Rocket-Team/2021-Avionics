@@ -1,9 +1,13 @@
 #include "pico/stdlib.h"
 
 #include "pid.h"
+#include "motor.h"
 #include "pico/printf.h"
 
 int main() {
+  // Consumes GPIO pins 14 & 15
+  motor_init();
+
   #ifndef PICO_DEFAULT_LED_PIN
     #warning blink example requires a board with a regular LED
   #else

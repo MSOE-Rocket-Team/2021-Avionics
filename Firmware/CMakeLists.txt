@@ -16,7 +16,10 @@ if (TARGET tinyusb_device)
   add_executable(firmware ${SOURCES})
 
   # Add pico_stdlib library which aggregates commonly used features
-  target_link_libraries(firmware pico_stdlib)
+  target_link_libraries(firmware
+      hardware_pwm
+      pico_stdlib
+      )
 
   # enable usb output, disable uart output
   pico_enable_stdio_usb(firmware 1)
