@@ -17,6 +17,8 @@ if (TARGET tinyusb_device)
 
   # Add pico_stdlib library which aggregates commonly used features
   target_link_libraries(firmware
+      hardware_i2c
+      hardware_irq
       hardware_pwm
       pico_stdlib
       )
