@@ -21,4 +21,9 @@ void imu_init();
  */
 void imu_read(inertial_measurement_t* im);
 
+/**
+ * Immediately read measurement from IMU
+ */
+void imu_read_immediate(inertial_measurement_t* im);
+
 #endif // IMU_H

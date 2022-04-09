@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pico/stdlib.h"
 #include "pico/binary_info.h"
+#include "pico/printf.h"
+#include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
 #include "hardware/irq.h"
@@ -31,6 +32,7 @@ inertial_measurement_t last_measurement = {
 };
 
 void imu_callback(uint gpio, uint32_t events) {
+    printf("Callback triggered\n");
     if (events & GPIO_IRQ_EDGE_RISE) {
         // Read new IMU measurements
         // "The interrupt is reset when the higher part of one of the enabled channels is read."
@@ -81,4 +83,40 @@ void imu_read(inertial_measurement_t* im) {
     memcpy(im->accel, last_measurement.accel, 3 * sizeof(int16_t));
     memcpy(im->gyro, last_measurement.gyro, 3 * sizeof(int16_t));
     im->timestamp = last_measurement.timestamp;
+}
+
+void imu_read_immediate(inertial_measurement_t* im) {
+    // Read new IMU measurements
+    // "The interrupt is reset when the higher part of one of the enabled channels is read."
+    // Note: Addresses of consecutive read operations are incremented by 1 byte
+    uint8_t g_data = OUTX_L_G;
+    uint8_t g_buffer[6];
+    i2c_write_blocking(i2c1, IMU_SAD, &g_data, 1, true);
+    i2c_read_blocking(i2c1, IMU_SAD, g_buffer, 6, false);
+
+    uint8_t a_data = OUTX_L_A;
+    uint8_t a_buffer[6];
+    i2c_write_blocking(i2c1, IMU_SAD, &a_data, 1, true);
+    i2c_read_blocking(i2c1, IMU_SAD, a_buffer, 6, false);
+
+    uint8_t ts_data = TIMESTAMP0;
+    uint8_t ts_buffer[4];
+    i2c_write_blocking(i2c1, IMU_SAD, &ts_data, 1, true);
+    i2c_read_blocking(i2c1, IMU_SAD, ts_buffer, 4, false);
+
+    printf("Immediate read: gyro { %d %d %d }",
+           g_buffer[0] | (g_buffer[1] << 8),
+           g_buffer[2] | (g_buffer[3] << 8),
+           g_buffer[4] | (g_buffer[5] << 8));
+
+    // Convert buffers to measurement
+    for (int i = 0; i < 3; i++) {
+        uint16_t g_axis = g_buffer[i * 2] | (g_buffer[i * 2 + 1] << 8);
+        im->gyro[i] = (int16_t) ~(g_axis - 1); // Undo two's complement
+
+        uint16_t a_axis = a_buffer[i * 2] | (a_buffer[i * 2 + 1] << 8);
+        im->accel[i] = (int16_t) ~(a_axis - 1);
+    }
+
+    im->timestamp = ts_buffer[0] | (ts_buffer[1] << 8) | (ts_buffer[2] << 16) | (ts_buffer[3] << 24);
 }

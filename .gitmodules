@@ -1,3 +1,6 @@
 [submodule "Firmware/pico-sdk"]
 	path = Firmware/pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
+[submodule "Firmware/no-OS-FatFS-SD-SPI-RPi-Pico"]
+	path = Firmware/no-OS-FatFS-SD-SPI-RPi-Pico
+	url = git@github.com:carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.git
