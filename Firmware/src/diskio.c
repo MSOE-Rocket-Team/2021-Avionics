@@ -46,6 +46,16 @@ static inline void chip_deselect(uint gpio) {
 
 // Send SPI command
 void send_cmd(BYTE cmd, DWORD arg, uint8_t* dst, size_t len) {
+  if (cmd & 0x80) { // Handle ACMD# command sequence
+    cmd &= 0x7F;  // Command variable falls thru
+    uint8_t data[] = {0};
+    send_cmd(CMD55, 0, data, 1);  // Prelude by CMD55
+    if (data[0]) {  // Error on CMD55; return immediate
+      if (len != 0) dst[0] = data[0];
+      return;
+    }
+  }
+
   uint8_t buf[] = {
       cmd,
       (BYTE)(arg >> 24),
@@ -120,13 +130,13 @@ DSTATUS disk_initialize() {
         do {  // Wait for leaving idle state
           sleep_us(100);
           send_cmd(ACMD41, 0, data, 1);
-        } while (tmr-- && data[0]);
+        } while (--tmr && data[0]);
       } else {
         card_type = MMCV3;  // MMC version 3
         do {  // Wait for leaving idle state
           sleep_us(100);
           send_cmd(CMD1, 0, data, 1);
-        } while (tmr-- && data[0]);
+        } while (--tmr && data[0]);
       }
 
       send_cmd(CMD16, 512, data, 1);  // Force block size to 512 bytes
@@ -141,26 +151,79 @@ DSTATUS disk_initialize() {
 
 // Read Partial Sector
 DRESULT disk_readp(BYTE* buff, DWORD sector, UINT offset, UINT count) {
-  DRESULT res;
-  // Put your code here
+  DRESULT res = RES_ERROR;
 
+  if (card_type == SDV2_BLOCK) sector *= 512; // Convert to byte address if needed
+
+  uint8_t data[] = {0};
+  send_cmd(CMD17, sector, data, 1); // Read data block
+  if (data[0] == 0) {
+    chip_select(SDIO_DAT3); // Ready chip for consecutive read
+
+    uint tmr = 40000;
+    do {  // Wait for data token
+      spi_read_blocking(spi0, 0xFF, data, 1);
+    } while (--tmr && data[0] == 0xFF);
+
+    if (tmr && data[0] == 0xFE) {  // Data token arrived
+      // Skip leading bytes from offset
+      while (offset--) spi_read_blocking(spi0, 0xFF, data, 1);
+
+      // Receive part of the sector
+      spi_read_blocking(spi0, 0xFF, buff, count);
+
+      // Skip trailing bytes and CRC
+      uint trailing = 512 + 2 - offset - count; // Number of trailing bytes to skip
+      uint8_t discard[trailing];
+      spi_read_blocking(spi0, 0xFF, discard, trailing);
+
+      res = RES_OK;
+    }
+  }
+
+  chip_deselect(SDIO_DAT3);
   return res;
 }
 
 // Write Partial Sector
 DRESULT disk_writep(const BYTE* buff, DWORD sc) {
-  DRESULT res;
+  DRESULT res = RES_ERROR;
+  static uint wc; // Sector write counter
+
   if (!buff) {
-    if (sc) {
-      // Initiate write process
+    if (sc) { // Initiate a sector write transaction
+      if (card_type == SDV2_BLOCK) sc *= 512; // Convert to byte address if needed
 
-    } else {
-      // Finalize write process
+      uint8_t data[] = {0};
+      send_cmd(CMD24, sc, data, 1);
+      if (data[0] == 0) {
+        chip_select(SDIO_DAT3);  // Ready chip for consecutive write
 
+        spi_write_blocking(spi0, (uint8_t[]){0xFF, 0xFE}, 2); // write padding + data block header
+        wc = 512; // Set write counter
+        res = RES_OK;
+      }
+    } else {  // Finalize a sector write transaction
+      wc += 2;  // Fill remaining bytes and CRC with zeroes
+      while (wc--) spi_write_blocking(spi0, (uint8_t[]){0x00}, 1);
+      uint8_t data[] = {0};
+      spi_read_blocking(spi0, 0xFF, data, 1);
+      if ((data[0] & 0x1F) == 0x05) { // Data response token status "accepted"
+        uint tmr = 5000;
+        do {  // Block while card busy
+          sleep_us(100);
+          spi_read_blocking(spi0, 0xFF, data, 1);
+        } while (--tmr && data[0] != 0xFF);
+        if (tmr) res = RES_OK;
+      }
+
+      chip_deselect(SDIO_DAT3); // Release chip from consecutive write
     }
-  } else {
-    // Send data to the disk
-
+  } else {  // Perform sector write transaction
+    while (wc-- && sc--) {
+      spi_write_blocking(spi0, buff++, 1);  // Write each byte in buff while wc >= 0
+    }
+    res = RES_OK;
   }
 
   return res;
