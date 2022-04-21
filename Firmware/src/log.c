@@ -1,15 +1,17 @@
-#include "sd.h"
+#include "pico/printf.h"
 #include "log.h"
 
-int log_init(const char* filename) {
-    sd_init();
-    return 0;
+FRESULT log_init() {
+  FRESULT fr = pf_mount(&sd_fs);
+  if (fr) return fr;
+  return pf_open(FILENAME);
 }
 
-int log_deinit() {
-    return 0;
+FRESULT log_close(uint* bw) {
+  return pf_write(0, 0, bw);
 }
 
-int log_write(const char* filename, const char* message) {
-    return 0;
+FRESULT log_write(const char* buff, uint btw, uint* bw) {
+  printf("WRITE: \"%.*s\"", btw, buff);
+  return pf_write(buff, btw, bw);
 }

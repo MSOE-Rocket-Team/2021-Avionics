@@ -1,4 +1,5 @@
 #include "pico/stdlib.h"
+#include "pico/printf.h"
 #include "hardware/spi.h"
 
 #include "crc.h"
@@ -66,15 +67,28 @@ void send_cmd(BYTE cmd, DWORD arg, uint8_t* dst, size_t len) {
   };
   buf[5] = (crc7(buf, 5) << 1) + 1; // Calculate CRC and end bit
 
+  printf("send_cmd: send");
+  for (int i = 0; i < 6; i++) {
+    printf(" %x", buf[i]);
+  }
+  printf("\n");
+
   chip_select(SDIO_DAT3);
   spi_write_blocking(spi0, buf, 6);
   if (len != 0) spi_read_blocking(spi0, 0xFF, dst, len);
   chip_deselect(SDIO_DAT3);
+
+  printf("send_cmd: recv");
+  while (len--) {
+    printf(" %x", dst[len]);
+  }
+  printf("\n");
 }
 
 // Initialize Disk Drive
 DSTATUS disk_initialize() {
   DSTATUS stat = STA_NOINIT;
+  printf("Using correct diskio lib\n");
 
   // Initialize SPI clock and data pins
   sleep_ms(1);
@@ -96,6 +110,14 @@ DSTATUS disk_initialize() {
   if (gpio_get(SD_DET)) {
     return STA_NODISK;
   }
+
+  // 80 dummy clock cycles
+  chip_select(SDIO_DAT3);
+  spi_write_blocking(spi0, (uint8_t[]){
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+    }, 10);
+  chip_deselect(SDIO_DAT3);
 
   uint8_t data[] = {0, 0, 0, 0, 0};
   send_cmd(CMD0, 0, data, 1);
@@ -146,6 +168,7 @@ DSTATUS disk_initialize() {
     }
   }
 
+  printf("card status: %d\ncard type: %d\n", stat, card_type);
   return stat;
 }
 

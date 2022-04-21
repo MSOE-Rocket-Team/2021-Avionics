@@ -1,25 +1,34 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include "pico/printf.h"
+#include "pff.h"
+
+#define FILENAME "log.txt"
+
+static FATFS sd_fs;  // SD file system object
+
 /**
  * Initialize logging and mount SD card
  * Consumes GPIO pins 3, 4, 5, 6, & 7
- * @return SD card status; see FRESULT in "ff.h"
+ * @return SD card status
  */
-int log_init();
+FRESULT log_init();
 
 /**
- * Unmount SD card
- * @return SD card status; see FRESULT in "ff.h"
+ * Close log file
+ * @param bw Pointer to the number of bytes written
+ * @return SD card status
  */
-int log_deinit();
+FRESULT log_close(uint* bw);
 
-/**
- * Write message to a file
- * @param filename File name
- * @param message Message to write to file
- * @return SD card status, or -1 if write fails; see FRESULT in "ff.h"
- */
-int log_write(const char* filename, const char* message);
+ /**
+  * Write buffer to a file
+  * @param buff Pointer to the data to be written
+  * @param btw Number of bytes to write
+  * @param bw Pointer to the number of bytes written
+  * @return SD card status
+  */
+FRESULT log_write(const char* buff, uint btw, uint* bw);
 
 #endif // LOG_H
