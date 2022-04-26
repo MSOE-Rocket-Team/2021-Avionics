@@ -74,8 +74,9 @@ void send_cmd(BYTE cmd, DWORD arg, uint8_t* dst, size_t len) {
   printf("\n");
 
   chip_select(SDIO_DAT3);
+  spi_write_blocking(spi0, (uint8_t[]){0xFF}, 1); // Dummy byte
   spi_write_blocking(spi0, buf, 6);
-  if (len != 0) spi_read_blocking(spi0, 0xFF, dst, len);
+  if (len != 0) spi_read_blocking(spi0, 0x00, dst, len);
   chip_deselect(SDIO_DAT3);
 
   printf("send_cmd: recv");
@@ -88,12 +89,9 @@ void send_cmd(BYTE cmd, DWORD arg, uint8_t* dst, size_t len) {
 // Initialize Disk Drive
 DSTATUS disk_initialize() {
   DSTATUS stat = STA_NOINIT;
-  printf("Using correct diskio lib\n");
 
   // Initialize SPI clock and data pins
-  sleep_ms(1);
-  spi_init(spi0,100000); // 100kHz baudrate
-  spi_set_format(spi0,8,1,1,SPI_MSB_FIRST);
+  spi_init(spi0,200000); // 200kHz baudrate
   gpio_set_function(SDIO_DAT0, GPIO_FUNC_SPI);
   gpio_set_function(SDIO_CLK, GPIO_FUNC_SPI);
   gpio_set_function(SDIO_CMD, GPIO_FUNC_SPI);
@@ -102,7 +100,6 @@ DSTATUS disk_initialize() {
   gpio_init(SDIO_DAT3);
   gpio_set_dir(SDIO_DAT3, GPIO_OUT);
   chip_deselect(SDIO_DAT3);
-  sleep_ms(1);  // Dummy clock
 
   // Detect if SD card inserted
   gpio_init(SD_DET);
@@ -112,16 +109,19 @@ DSTATUS disk_initialize() {
   }
 
   // 80 dummy clock cycles
-  chip_select(SDIO_DAT3);
+  sleep_ms(1);
   spi_write_blocking(spi0, (uint8_t[]){
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF
     }, 10);
-  chip_deselect(SDIO_DAT3);
 
   uint8_t data[] = {0, 0, 0, 0, 0};
-  send_cmd(CMD0, 0, data, 1);
-  if (data[0] == 0x01) {  // Software reset
+  int n = 10;
+  do {
+    sleep_ms(100);
+    send_cmd(CMD0, 0, data, 1); // Software reset
+  } while (--n && data[0] != 0x01);
+  if (data[0] == 0x01) {
     send_cmd(CMD8, 0x1AA, data, 5);
     if (data[0] == 0x01) {  // SDv2
       if (data[3] == 0x01 && data[4] == 0xAA) { // Works at VDD range of 2.7-3.6V
@@ -129,7 +129,7 @@ DSTATUS disk_initialize() {
         do {  // Wait for leaving idle state (ACMD41 with High Capacity Support)
           sleep_us(100);
           send_cmd(ACMD41, 1 << 30, data, 1);
-        } while (tmr-- && data[0]);
+        } while (--tmr && data[0]);
 
         send_cmd(CMD58, 0, data, 5);
         if (tmr && data[0] == 0) {  // Check CCS bit in the OCR

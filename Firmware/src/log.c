@@ -12,6 +12,6 @@ FRESULT log_close(uint* bw) {
 }
 
 FRESULT log_write(const char* buff, uint btw, uint* bw) {
-  printf("WRITE: \"%.*s\"", btw, buff);
+  printf("WRITE: \"%.*s\"\n", btw, buff);
   return pf_write(buff, btw, bw);
 }

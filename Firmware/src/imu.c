@@ -23,7 +23,7 @@
 #define INT1_DRDY_G 0x2     // Gyroscope data-ready interrupt flag
 #define INT1_DRDY_A 0x1     // Accelerometer data-ready interrupt flag
 
-#define IMU_SAD     0b1101010    // IMU slave address, last bit is 1 for second IMU
+#define IMU_SAD     0b11010110  //0b01101011    // IMU slave address, last bit is 1 for second IMU
 
 inertial_measurement_t last_measurement = {
     {0, 0, 0},
@@ -66,17 +66,16 @@ void imu_callback(uint gpio, uint32_t events) {
 }
 
 void imu_init() {
-  i2c_init(i2c1, 100000); // 100kHz baudrate
+  i2c_init(i2c1, 50000); // 50kHz baudrate
   gpio_set_function(I2C1_SDA, GPIO_FUNC_I2C);
   gpio_set_function(I2C1_SCL, GPIO_FUNC_I2C);
   gpio_pull_up(I2C1_SDA);
   gpio_pull_up(I2C1_SCL);
-  bi_decl(bi_2pins_with_func(I2C1_SDA, I2C1_SCL, GPIO_FUNC_I2C));
 
   // Enable interrupts for gyroscope and accelerometer
-  uint8_t data[] = { INT1_CTRL, INT1_DRDY_G | INT1_DRDY_A };
-  i2c_write_blocking(i2c1, IMU_SAD, data, 2, false);
-  gpio_set_irq_enabled_with_callback(IMU_INT1, GPIO_IRQ_EDGE_RISE , true, &imu_callback);
+//  uint8_t data[] = { INT1_CTRL, INT1_DRDY_G | INT1_DRDY_A };
+//  i2c_write_blocking(i2c1, IMU_SAD, data, 2, false);
+//  gpio_set_irq_enabled_with_callback(IMU_INT1, GPIO_IRQ_EDGE_RISE , true, &imu_callback);
 }
 
 void imu_read(inertial_measurement_t* im) {
@@ -86,28 +85,36 @@ void imu_read(inertial_measurement_t* im) {
 }
 
 void imu_read_immediate(inertial_measurement_t* im) {
-  // Read new IMU measurements
-  // "The interrupt is reset when the higher part of one of the enabled channels is read."
-  // Note: Addresses of consecutive read operations are incremented by 1 byte
+  int bw; // Bytes written
+
   uint8_t g_data = OUTX_L_G;
   uint8_t g_buffer[6];
-  i2c_write_blocking(i2c1, IMU_SAD, &g_data, 1, true);
-  i2c_read_blocking(i2c1, IMU_SAD, g_buffer, 6, false);
+  bw = i2c_write_blocking(i2c1, IMU_SAD | 0, &g_data, 1, true);
+  if (bw == PICO_ERROR_GENERIC) {
+    printf("Gyro write error\n");
+    return;
+  }
+  bw = i2c_read_blocking(i2c1, IMU_SAD | 1, g_buffer, 6, false);
+  if (bw == PICO_ERROR_GENERIC) {
+    printf("Gyro read error\n");
+    return;
+  }
+
+  printf("gyro: { ");
+  for (int i = 0; i < 6; i++) {
+    printf("%x ", g_buffer[i]);
+  }
+  printf("}\n");
 
   uint8_t a_data = OUTX_L_A;
   uint8_t a_buffer[6];
-  i2c_write_blocking(i2c1, IMU_SAD, &a_data, 1, true);
-  i2c_read_blocking(i2c1, IMU_SAD, a_buffer, 6, false);
+  i2c_write_blocking(i2c1, IMU_SAD | 0, &a_data, 1, true);
+  i2c_read_blocking(i2c1, IMU_SAD | 1, a_buffer, 6, false);
 
   uint8_t ts_data = TIMESTAMP0;
   uint8_t ts_buffer[4];
-  i2c_write_blocking(i2c1, IMU_SAD, &ts_data, 1, true);
-  i2c_read_blocking(i2c1, IMU_SAD, ts_buffer, 4, false);
-
-  printf("Immediate read: gyro { %d %d %d }",
-         g_buffer[0] | (g_buffer[1] << 8),
-         g_buffer[2] | (g_buffer[3] << 8),
-         g_buffer[4] | (g_buffer[5] << 8));
+  i2c_write_blocking(i2c1, IMU_SAD | 0, &ts_data, 1, true);
+  i2c_read_blocking(i2c1, IMU_SAD | 1, ts_buffer, 4, false);
 
   // Convert buffers to measurement
   for (int i = 0; i < 3; i++) {
